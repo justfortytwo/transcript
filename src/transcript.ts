@@ -1,5 +1,6 @@
 import type { DbHandles, Embedder } from '@justfortytwo/memory';
 import { vecToBuffer } from '@justfortytwo/memory';
+import { contextOf, searchTranscript } from './search.js';
 import type { ImportRow, Transcript, TranscriptEvent } from './types.js';
 
 /** Sweep attempts per row before the sweep stops retrying it (per Transcript instance). */
@@ -78,6 +79,10 @@ export function createTranscript(h: DbHandles, embedder: Embedder): Transcript {
       if (r.embedding) writeVec(id, r.embedding);
       return id;
     }),
+
+    search: (o) => searchTranscript(h, embedder, o),
+
+    context: (id, before, after) => contextOf(h, id, before, after),
 
     // `batch` bounds embedder calls per sweep; returns how many vectors were written.
     async sweepMissingVectors(batch = 100) {

@@ -39,6 +39,24 @@ export interface Cursor {
   position: number;
 }
 
+export interface SearchOpts {
+  text: string;
+  /** Inclusive lower bound on `ts` (stored format, e.g. 'YYYY-MM-DD HH:MM:SS'). */
+  since?: string;
+  /** Inclusive upper bound on `ts`. */
+  until?: string;
+  channel?: string;
+  threadId?: string;
+  /** Default 10, clamped to 1..50. */
+  limit?: number;
+}
+
+export interface SearchHit extends TranscriptRow {
+  /** Reciprocal-rank-fusion score; higher is better. */
+  score: number;
+  matched: Array<'keyword' | 'semantic'>;
+}
+
 export interface Transcript {
   /** Writes the row and FTS entry synchronously; the vector is produced in the background. */
   append(e: TranscriptEvent): Promise<number>;
@@ -46,4 +64,8 @@ export interface Transcript {
   importRow(r: ImportRow): number;
   /** Embeds up to `batch` rows that have no vector. Returns how many were embedded. */
   sweepMissingVectors(batch?: number): Promise<number>;
+  /** Hybrid keyword + semantic search fused with reciprocal rank fusion. */
+  search(o: SearchOpts): Promise<SearchHit[]>;
+  /** The hit plus up to `before`/`after` (default 5, clamped 0..20) neighbours, ascending id. */
+  context(id: number, before?: number, after?: number): TranscriptRow[];
 }
