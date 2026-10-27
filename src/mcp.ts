@@ -2,6 +2,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { DbHandles, Embedder, McpExtension } from '@justfortytwo/memory';
 import { prepareTranscript } from './db.js';
 import { createTranscript } from './transcript.js';
+import type { Transcript } from './types.js';
 
 const INSTRUCTIONS = [
   'Transcript: searchable chat history (`transcript_search`, then `transcript_context` for neighbours of a hit id).',
@@ -24,13 +25,20 @@ function optInt(v: unknown): number | undefined {
  * Read-only by design: there is no delete or write tool.
  */
 export function createMcpExtension(h: DbHandles, embedder: Embedder): McpExtension {
-  const transcript = createTranscript(h, embedder);
-  let ready: Promise<void> | undefined;
-  const prepare = () => (ready ??= prepareTranscript(h));
+  // The Transcript prepares statements against its tables, so build it only once the schema
+  // exists. A failed prepare (e.g. SQLITE_BUSY) is forgotten so the next tool call retries.
+  let ready: Promise<Transcript> | undefined;
+  const prepare = (): Promise<Transcript> =>
+    (ready ??= prepareTranscript(h)
+      .then(() => createTranscript(h, embedder))
+      .catch((err: unknown) => {
+        ready = undefined;
+        throw err;
+      }));
 
   // Embed rows that lack a vector, once, in the background.
   prepare()
-    .then(() => transcript.sweepMissingVectors())
+    .then((transcript) => transcript.sweepMissingVectors())
     .catch((err) => {
       process.stderr.write(`fortytwo-transcript: background sweep failed: ${err instanceof Error ? err.message : String(err)}\n`);
     });
@@ -70,7 +78,7 @@ export function createMcpExtension(h: DbHandles, embedder: Embedder): McpExtensi
     ],
     async call(name, args) {
       if (name !== 'transcript_search' && name !== 'transcript_context') return undefined;
-      await prepare();
+      const transcript = await prepare();
       if (name === 'transcript_search') {
         const text = optStr(args['text']);
         if (!text) return { error: 'text is required' };

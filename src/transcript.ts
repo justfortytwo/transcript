@@ -39,9 +39,12 @@ export function createTranscript(h: DbHandles, embedder: Embedder): Transcript {
   const failures = new Map<number, number>();
 
   // vec0 accepts only a 64-bit INTEGER rowid binding: bind as BigInt (as memory does).
-  const writeVec = h.raw.transaction((id: number, buf: Buffer) => {
+  // IMMEDIATE takes the write lock up front, so a concurrent writer makes this wait on
+  // busy_timeout instead of failing the read-then-write upgrade with SQLITE_BUSY_SNAPSHOT.
+  const writeVecTx = h.raw.transaction((id: number, buf: Buffer) => {
     if (vecExists.get(BigInt(id)) === undefined) insVec.run(BigInt(id), buf);
   });
+  const writeVec = (id: number, buf: Buffer): void => writeVecTx.immediate(id, buf);
 
   async function embedRow(id: number, content: string): Promise<void> {
     inFlight.add(id);

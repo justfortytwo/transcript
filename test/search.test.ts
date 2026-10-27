@@ -107,3 +107,10 @@ it('finds a narrow-filter semantic match in a corpus larger than the candidate w
   expect(hits[0].id).toBe(target);
   expect(hits[0].matched).toEqual(['semantic']);
 });
+
+it('does not throw on NUL bytes in the query', async () => {
+  const { t, ids } = await seeded([['alpha beta'], ['gamma']]);
+  expect(await t.search({ text: '\u0000' })).toEqual([]);
+  const hits = await t.search({ text: 'alpha\u0000beta' });
+  expect(hits.map((x) => x.id)).toContain(ids[0]);
+});

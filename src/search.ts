@@ -67,7 +67,8 @@ async function semanticIdsOrEmpty(h: DbHandles, embedder: Embedder, text: string
 }
 
 export async function searchTranscript(h: DbHandles, embedder: Embedder, o: SearchOpts): Promise<SearchHit[]> {
-  const text = o.text.trim();
+  // NUL inside an FTS5 phrase is rejected as an unterminated string; treat it as a separator.
+  const text = o.text.replace(/\u0000/g, ' ').trim();
   if (text === '') return [];
   const limit = clamp(o.limit, 1, MAX_LIMIT, DEFAULT_LIMIT);
   const f = filterOf(o);

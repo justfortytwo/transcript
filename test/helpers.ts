@@ -7,11 +7,11 @@ import type { TranscriptEvent } from '../src/types.js';
 
 const fixtures: Array<{ root: string; h: DbHandles }> = [];
 
-export async function fixture(): Promise<DbHandles> {
+export async function fixture(opts: { prepare?: boolean } = {}): Promise<DbHandles> {
   const root = mkdtempSync(join(tmpdir(), 'transcript-'));
   const h = openDb(join(root, 'fortytwo.db'));
   fixtures.push({ root, h });
-  await prepareTranscript(h);
+  if (opts.prepare !== false) await prepareTranscript(h);
   return h;
 }
 
