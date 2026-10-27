@@ -34,7 +34,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@justfortytwo/memory": "^1.0.0-2",
+    "@justfortytwo/memory": "^1.0.0-3",
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
