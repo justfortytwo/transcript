@@ -1,0 +1,10 @@
+node_modules
+dist
+*.log
+.env
+*.tsbuildinfo
+*.db
+*.sqlite*
+.claude/
+.codegraph/
+.wolf/
