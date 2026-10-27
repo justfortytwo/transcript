@@ -6,7 +6,9 @@ A searchable conversation log for **fortytwo** channels (Telegram, scheduler,
 own tables, so memory can go back to holding only facts.
 
 Library only: no bin, no server. Search tools for the agent are added through
-memory's MCP extension seam (planned).
+memory's MCP extension seam: `createMcpExtension` is implemented and serves
+`transcript_search` / `transcript_context` when memory is started with
+`FORTYTWO_MCP_EXTENSIONS=@justfortytwo/transcript`.
 
 ## Install
 
