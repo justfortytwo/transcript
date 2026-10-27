@@ -81,3 +81,29 @@ it('clamps limit to 50 and at least 1', async () => {
   expect((await t.search({ text: 'common', limit: 0 })).length).toBe(1);
   expect((await t.search({ text: 'common' })).length).toBe(10);
 });
+
+it('finds a semantic match under a filter even with a row that has no keyword hit', async () => {
+  const { t, ids } = await seeded([
+    ['the invoice is overdue', { channel: 'email' }],
+    ['lunch plans for friday', { channel: 'email' }],
+    ['lunch plans for friday', { channel: 'telegram' }],
+  ]);
+  const hits = await t.search({ text: 'invoice', channel: 'email' });
+  expect(hits.map((x) => x.id).sort()).toEqual([ids[0], ids[1]]);
+  expect(hits.find((x) => x.id === ids[1])!.matched).toEqual(['semantic']);
+  const byThread = await seeded([['x1', { threadId: 'T' }], ['y', { threadId: 'U' }]]);
+  expect((await byThread.t.search({ text: 'zzz', threadId: 'T' })).map((x) => x.matched)).toEqual([['semantic']]);
+});
+
+it('finds a narrow-filter semantic match in a corpus larger than the candidate window', async () => {
+  const h = await fixture();
+  const e = new FakeEmbedder();
+  const t = createTranscript(h, e);
+  for (let i = 0; i < 250; i++) await t.append(event(`filler ${i}`, { threadId: 'noise' }));
+  const target = await t.append(event('needle row', { threadId: 'narrow' }));
+  await until(() => vecCount(h) === 251, 10000);
+  const hits = await t.search({ text: 'unrelated query', threadId: 'narrow' });
+  expect(hits).toHaveLength(1);
+  expect(hits[0].id).toBe(target);
+  expect(hits[0].matched).toEqual(['semantic']);
+});

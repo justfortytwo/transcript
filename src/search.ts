@@ -39,27 +39,31 @@ function keywordIds(h: DbHandles, text: string, f: Filter): number[] {
   return rows.map((r) => r.id);
 }
 
-async function semanticIds(h: DbHandles, embedder: Embedder, text: string, f: Filter): Promise<number[]> {
-  const qv = vecToBuffer(await embedder.embed(text));
-  // `k = ?` is the portable KNN constraint (see memory's recall); filters apply after the KNN.
-  const rows = h.raw
-    .prepare(
-      `SELECT t.id FROM transcript_vec v JOIN transcript t ON t.id = v.rowid
-        WHERE v.embedding MATCH @qv AND k = @k${f.sql}
-        ORDER BY v.distance`,
-    )
-    .all({ ...f.params, qv, k: CANDIDATES }) as Array<{ id: number }>;
+/** Runs the vector SQL; errors here are real bugs and must surface. */
+function semanticIds(h: DbHandles, qv: Buffer, f: Filter): number[] {
+  // Unfiltered: portable `k = ?` KNN (see memory's recall). Filtered: the KNN would take the global
+  // top-k before filtering and could miss matching rows, so rank the filtered rows by exact L2
+  // distance (the vec0 default metric) instead.
+  const sql = f.sql === ''
+    ? `SELECT t.id FROM transcript_vec v JOIN transcript t ON t.id = v.rowid
+        WHERE v.embedding MATCH @qv AND k = @k ORDER BY v.distance`
+    : `SELECT t.id FROM transcript_vec v JOIN transcript t ON t.id = v.rowid
+        WHERE 1 = 1${f.sql}
+        ORDER BY vec_distance_L2(v.embedding, @qv), t.id LIMIT @k`;
+  const rows = h.raw.prepare(sql).all({ ...f.params, qv, k: CANDIDATES }) as Array<{ id: number }>;
   return rows.map((r) => r.id);
 }
 
-/** An embedder outage degrades to keyword-only search rather than failing the call. */
+/** An embedder outage degrades to keyword-only search; only the embed call is guarded. */
 async function semanticIdsOrEmpty(h: DbHandles, embedder: Embedder, text: string, f: Filter): Promise<number[]> {
+  let qv: Buffer;
   try {
-    return await semanticIds(h, embedder, text, f);
+    qv = vecToBuffer(await embedder.embed(text));
   } catch (err) {
     process.stderr.write(`transcript: semantic search unavailable: ${err instanceof Error ? err.message : String(err)}\n`);
     return [];
   }
+  return semanticIds(h, qv, f);
 }
 
 export async function searchTranscript(h: DbHandles, embedder: Embedder, o: SearchOpts): Promise<SearchHit[]> {
