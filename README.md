@@ -43,7 +43,7 @@ const { entries, cursor } = transcriptDelta(h, previousCursor, 50);
 | Export | What it does |
 | --- | --- |
 | `prepareTranscript(h)` | Creates `transcript_vec` (vec0, 1024 dims) and applies the `transcript_*` migrations. Idempotent. |
-| `createTranscript(h, embedder)` | Returns `{ append, importRow, sweepMissingVectors }`. |
+| `createTranscript(h, embedder)` | Returns `{ append, importRow, search, context, sweepMissingVectors }`. |
 | `append(event)` | Writes the row and its full-text entry, returns the id. The vector is computed in the background; embedder errors are logged to stderr and never reject. |
 | `importRow(row)` | Inserts a row moved out of memory with its original `ts`, `legacyMemoryId` and optional vector. Same `legacyMemoryId` twice returns the existing id. |
 | `sweepMissingVectors(batch = 100)` | Embeds rows without a vector, up to `batch` embedder calls. A row that fails 3 sweep attempts is skipped for the rest of the process. |
