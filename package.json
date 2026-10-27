@@ -1,6 +1,6 @@
 {
   "name": "@justfortytwo/transcript",
-  "version": "1.0.0-0",
+  "version": "1.0.0",
   "description": "Searchable conversation log for fortytwo channels, stored in the memory SQLite file.",
   "license": "MIT",
   "author": {
@@ -34,7 +34,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@justfortytwo/memory": "^1.0.0-3"
+    "@justfortytwo/memory": "^1.0.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
